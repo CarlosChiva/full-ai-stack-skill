@@ -2,10 +2,17 @@
   "name": "carlos-stack-agent-skills",
   "description": "carlos-stack agent skills",
   "version": "1.0.0",
-  "author": { "name": "dread", "email": "cxhiva@gmail.com" },
+  "author": {
+    "name": "dread",
+    "email": "cxhiva@gmail.com"
+  },
   "homepage": "https://example.com",
   "repository": "https://github.com/carlos-stack/agent-skills",
   "license": "MIT",
-  "keywords": ["ai","agent","skill"],
+  "keywords": [
+    "ai",
+    "agent",
+    "skill"
+  ],
   "skills": "./skills/"
 }
