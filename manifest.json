@@ -17,7 +17,7 @@
   "skills": [
     {
       "name": "full-ai-stack",
-      "description": "Provide instructions to install and configure ai-stack",
+      "description": "Provide instructions how to install ai-stack asked by user and/or configure agents.",
       "version": "1.0.0",
       "source": "./skills/full-ai-stack",
       "license": "MIT",

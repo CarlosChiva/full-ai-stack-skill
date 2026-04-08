@@ -3,7 +3,7 @@ name: full-ai-stack
 description: Provide instructions how to install ai-stack asked by user and/or configure agents.
 license: MIT
 metadata:
-  author: carlos-stack
+  author: "dread"
   repository: "https://github.com/CarlosChiva/full-ai-stack-skill"
   version: "1.0.0"
   keywords: "ai, agent, skill"

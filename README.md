@@ -10,7 +10,7 @@ Agent Skills are folders of instructions, scripts, and resources that agents can
 <!-- START:Available-Skills -->
 | Skill | Description |
 | ----- | ----------- |
-| [full-ai-stack](./skills/full-ai-stack) | Provide instructions to install and configure ai-stack |
+| [full-ai-stack](./skills/full-ai-stack) | Provide instructions how to install ai-stack asked by user and/or configure a... |
 <!-- END:Available-Skills -->
 
 ## Installation

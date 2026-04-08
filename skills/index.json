@@ -2,9 +2,12 @@
   "skills": [
     {
       "name": "full-ai-stack",
-      "description": "Provide instructions to install and configure ai-stack",
+      "description": "Provide instructions how to install ai-stack asked by user and/or configure agents.",
       "files": [
-        "SKILL.md"
+        "SKILL.md",
+        "references/agents-installation.md",
+        "references/configure-agents.md",
+        "scripts/change_provider_model_opencode.sh"
       ]
     }
   ]
