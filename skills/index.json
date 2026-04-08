@@ -1,0 +1,9 @@
+{
+  "skills": [
+    {
+      "name": "full-ai-stack",
+      "description": "Provide instructions to install and configure ai-stack",
+      "files": ["SKILL.md"]
+    }
+  ]
+}
