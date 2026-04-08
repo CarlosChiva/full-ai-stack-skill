@@ -1,4 +1,4 @@
-# carlos-stack Agent Skills
+# carlos-ai-full-stack Agent Skills
 
 This repository contains a collection of agent skills for carlos-stack. These skills are designed to enhance the capabilities of agents by providing them with specialized functionalities.
 
@@ -21,13 +21,13 @@ Use [skills](https://skills.sh/) to install skills directly:
 
 ```bash
 # Install all skills
-npx skills add carlos-stack/agent-skills
+npx skills add CarlosChiva/full-ai-stack-skill
 
 # Install specific skills
-npx skills add carlos-stack/agent-skills --skill full-ai-stack
+npx skills add CarlosChiva/full-ai-stack-skill --skill full-ai-stack
 
 # List available skills
-npx skills add carlos-stack/agent-skills --list
+npx skills add CarlosChiva/full-ai-stack-skill --list
 ```
 
 ### Claude Code Plugin
@@ -36,7 +36,7 @@ Install via Claude Code's plugin system:
 
 ```bash
 # Add the plugin (includes all skills)
-/plugin add carlos-stack/agent-skills
+/plugin add CarlosChiva/full-ai-stack-skill
 ```
 
 > Claude Code plugins are also supported in Factory's [Droid](https://docs.factory.ai/cli/configuration/plugins#claude-code-compatibility).
@@ -47,10 +47,10 @@ Agent skills can also be installed by using the below commands from [Playbooks](
 
 ```bash
 # Playbooks
-npx playbooks add skill carlos-stack/agent-skills
+npx playbooks add skill CarlosChiva/full-ai-stack-skill
 
 # Context7
-npx ctx7 skills install /carlos-stack/agent-skills
+npx ctx7 skills install /CarlosChiva/full-ai-stack-skill
 ```
 
 ## Adding New Skills
