@@ -9,6 +9,17 @@
         "references/configure-agents.md",
         "scripts/change_provider_model_opencode.sh"
       ]
+    },
+    {
+      "name": "update-services",
+      "description": "Provide instructions how open-webui and ollama should be updated",
+      "files": [
+        "SKILL.md",
+        "references/update-ollama.md",
+        "references/update-open-webui.md",
+        "scripts/install_ollama.sh",
+        "scripts/update_opencode.sh"
+      ]
     }
   ]
 }

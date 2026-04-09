@@ -11,6 +11,7 @@ Agent Skills are folders of instructions, scripts, and resources that agents can
 | Skill | Description |
 | ----- | ----------- |
 | [full-ai-stack](./skills/full-ai-stack) | Provide instructions how to install ai-stack asked by user and/or configure a... |
+| [update-services](./skills/update-services) | Provide instructions how open-webui and ollama should be updated |
 <!-- END:Available-Skills -->
 
 ## Installation

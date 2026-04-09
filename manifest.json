@@ -26,6 +26,18 @@
         "agent",
         "skill"
       ]
+    },
+    {
+      "name": "update-services",
+      "description": "Provide instructions how open-webui and ollama should be updated",
+      "version": "1.0.0",
+      "source": "./skills/update-services",
+      "license": "MIT",
+      "keywords": [
+        "ai",
+        "agent",
+        "skill"
+      ]
     }
   ]
 }
