@@ -1,4 +1,5 @@
-# Skill: Updating Ollama Service
+
+# Updating Ollama Service
 
 Follow these steps to update the Ollama service manually without using an automated script.
 
@@ -6,19 +7,24 @@ Follow these steps to update the Ollama service manually without using an automa
 
 ## Prerequisites
 
-You need root/sudo privileges to update the Ollama service and modify its systemd unit file.
+- Root/sudo privileges on the Linux machine.
+- The user must provide their sudo password **in the chat**. Do NOT use `read -rsp` or any interactive terminal prompt — it will fail. Instead, ask the user directly in the conversation.
 
 ---
 
-## Step 1: Enter Your Password
+## Step 1: Ask the User for Their Sudo Password
 
-Prompt the user for their sudo password, then store it in a variable. All subsequent `sudo` commands will read from this variable using `sudo -S`.
+Before running any command, say to the user:
+
+> "Please share your sudo password so I can run the commands with elevated privileges. It will only be used during this session and never stored."
+
+Once the user provides the password, assign it in the script like this:
 
 ```bash
-read -rsp "Enter your sudo password: " SUDO_PASS && echo
+SUDO_PASS="password_provided_by_user"
 ```
 
-> **Security note**: The password is stored in a shell variable only for the duration of this session and is never written to disk or logs.
+> **Security note**: The password is stored in a shell variable only for the duration of this session and is never written to disk or logs. All subsequent `sudo` commands use `echo "$SUDO_PASS" | sudo -S` to avoid any interactive prompts.
 
 ---
 
@@ -48,7 +54,7 @@ If the user says **yes**, present the list of configurable variables:
 
 - **OLLAMA_MODELS**
   Directory where model files are stored.
-  - *Default*: `~/.ollama/models` (Linux/Mac) or `C:\Users\<user>\.ollama\models` (Windows).
+  - *Default*: `~/.ollama/models`
   - *Tip*: Change it to another partition if you need to save space on the main drive.
 
 - **OLLAMA_HOST**
@@ -67,22 +73,22 @@ If the user says **yes**, present the list of configurable variables:
 
 - **OLLAMA_NUM_PARALLEL**
   Number of concurrent requests Ollama can process simultaneously.
-  - *Default*: `1` (Increase it to utilize better hardware).
+  - *Default*: `1`
 
 - **OLLAMA_MAX_QUEUE**
   Maximum size of the request queue. Exceeded requests will be rejected.
   - *Default*: `512`
 
 - **OLLAMA_MAX_LOADED_MODELS**
-  Maximum number of models that can be loaded in VRAM/RAM at the same time.
+  Maximum number of models loaded in VRAM/RAM at the same time.
   - *Default*: `1`
 
 - **OLLAMA_DEBUG**
   Enables detailed debug logs if set to `1`.
 
 - **CUDA_VISIBLE_DEVICES**
-  Defines which Graphics Cards (GPUs) Ollama will use.
-  - *Usage*: A single ID (e.g., `0`) or comma-separated IDs (e.g., `0,1`) to use multiple GPUs.
+  Defines which GPUs Ollama will use.
+  - *Usage*: A single ID (e.g., `0`) or comma-separated IDs (e.g., `0,1`).
 
 ---
 
@@ -96,7 +102,7 @@ echo "$SUDO_PASS" | sudo -S sed -i '/\[Install\]/i Environment="<VARIABLE_NAME>=
 
 ### Examples
 
-**Set OLLAMA_HOST to expose the service on the local network:**
+**Expose the service on the local network:**
 
 ```bash
 echo "$SUDO_PASS" | sudo -S sed -i '/\[Install\]/i Environment="OLLAMA_HOST=0.0.0.0:11434"' /etc/systemd/system/ollama.service
@@ -156,24 +162,24 @@ systemctl show ollama --property=Environment
 **User wants to expose the service on LAN and use GPU 0:**
 
 ```bash
-# Enter sudo password
-read -rsp "Enter your sudo password: " SUDO_PASS && echo
+# 1. Assign the password the user provided in chat
+SUDO_PASS="password_provided_by_user"
 
-# 1. Update Ollama
+# 2. Update Ollama
 echo "$SUDO_PASS" | sudo -S curl -fsSL https://ollama.com/install.sh | sh
 
-# 2. Add environment variables
+# 3. Add environment variables
 echo "$SUDO_PASS" | sudo -S sed -i '/\[Install\]/i Environment="OLLAMA_HOST=0.0.0.0:11434"' /etc/systemd/system/ollama.service
 echo "$SUDO_PASS" | sudo -S sed -i '/\[Install\]/i Environment="CUDA_VISIBLE_DEVICES=0"' /etc/systemd/system/ollama.service
 
-# 3. Reload and restart
+# 4. Reload and restart
 echo "$SUDO_PASS" | sudo -S systemctl daemon-reload
 echo "$SUDO_PASS" | sudo -S systemctl restart ollama
 
-# 4. Verify
+# 5. Verify
 echo "$SUDO_PASS" | sudo -S systemctl status ollama
 ```
- 
+
 ---
 
 ## Best Practices
