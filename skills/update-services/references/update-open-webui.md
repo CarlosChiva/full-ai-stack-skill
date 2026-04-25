@@ -120,7 +120,7 @@ docker run -d -p 8080:8080 --name open-webui --restart always -v open-webui:/app
 docker ps --filter name=open-webui
 docker logs open-webui
 ```
-
+ 
 ---
 
 ## Best Practices

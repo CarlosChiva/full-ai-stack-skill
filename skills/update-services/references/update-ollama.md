@@ -173,7 +173,7 @@ echo "$SUDO_PASS" | sudo -S systemctl restart ollama
 # 4. Verify
 echo "$SUDO_PASS" | sudo -S systemctl status ollama
 ```
-
+ 
 ---
 
 ## Best Practices
