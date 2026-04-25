@@ -1,4 +1,10 @@
 
+---
+name: "Update Ollama"
+description: "Manual steps to update the Ollama service, configure environment variables, and manage systemd unit files."
+tags: [ollama, update, systemd, environment-variables, service]
+---
+
 # Updating Ollama Service
 
 Follow these steps to update the Ollama service manually without using an automated script.

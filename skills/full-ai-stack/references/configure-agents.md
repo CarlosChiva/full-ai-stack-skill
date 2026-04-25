@@ -1,3 +1,9 @@
+---
+name: "Configure Agents"
+description: "Instructions for configuring provider and model settings for agents using the change_provider_model_opencode.sh script."
+tags: [agents, configuration, provider, model, opencode]
+---
+
 ## AGENTS CONFIGURATION
 
 First of all, you have to ask permision to user to knwon if he wants configure the providers and models of current agents.

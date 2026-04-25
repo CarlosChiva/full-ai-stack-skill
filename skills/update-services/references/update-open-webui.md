@@ -1,3 +1,9 @@
+---
+name: "Update Open-WebUI"
+description: "Manual steps to update the Open-WebUI Docker container with various configuration options."
+tags: [open-webui, update, docker, container, configuration]
+---
+
 # Skill: Updating Open-WebUI Service
 
 Follow these steps to update the Open-WebUI service manually without using an automated script.
