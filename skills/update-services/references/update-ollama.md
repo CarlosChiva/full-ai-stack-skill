@@ -3,14 +3,12 @@
 
 Follow these steps to update the Ollama service manually without using an automated script.
 
----
 
 ## Prerequisites
 
 - Root/sudo privileges on the Linux machine.
 - The user must provide their sudo password **in the chat**. Do NOT use `read -rsp` or any interactive terminal prompt — it will fail. Instead, ask the user directly in the conversation.
 
----
 
 ## Step 1: Ask the User for Their Sudo Password
 
@@ -26,7 +24,6 @@ SUDO_PASS="password_provided_by_user"
 
 > **Security note**: The password is stored in a shell variable only for the duration of this session and is never written to disk or logs. All subsequent `sudo` commands use `echo "$SUDO_PASS" | sudo -S` to avoid any interactive prompts.
 
----
 
 ## Step 2: Update Ollama
 
@@ -36,7 +33,6 @@ Run the official installation script to update Ollama to the latest version:
 echo "$SUDO_PASS" | sudo -S curl -fsSL https://ollama.com/install.sh | sh
 ```
 
----
 
 ## Step 3: Ask User About Additional Configuration
 
@@ -44,7 +40,6 @@ Before editing the systemd unit file, ask the user:
 
 > "Would you like to add any custom environment variables to the Ollama service?"
 
----
 
 ## Step 4: Expose Available Environment Variables
 
@@ -90,7 +85,6 @@ If the user says **yes**, present the list of configurable variables:
   Defines which GPUs Ollama will use.
   - *Usage*: A single ID (e.g., `0`) or comma-separated IDs (e.g., `0,1`).
 
----
 
 ## Step 5: Add Environment Variables to the Systemd Unit File
 
@@ -128,7 +122,6 @@ echo "$SUDO_PASS" | sudo -S sed -i '/\[Install\]/i Environment="OLLAMA_MODELS=/m
 echo "$SUDO_PASS" | sudo -S sed -i '/\[Install\]/i Environment="CUDA_VISIBLE_DEVICES=0"' /etc/systemd/system/ollama.service
 ```
 
----
 
 ## Step 6: Reload and Restart the Service
 
@@ -139,7 +132,6 @@ echo "$SUDO_PASS" | sudo -S systemctl daemon-reload
 echo "$SUDO_PASS" | sudo -S systemctl restart ollama
 ```
 
----
 
 ## Verification
 
@@ -154,8 +146,6 @@ Check that environment variables are applied:
 ```bash
 systemctl show ollama --property=Environment
 ```
-
----
 
 ## Complete Example Flow
 
@@ -179,8 +169,6 @@ echo "$SUDO_PASS" | sudo -S systemctl restart ollama
 # 5. Verify
 echo "$SUDO_PASS" | sudo -S systemctl status ollama
 ```
-
----
 
 ## Best Practices
 

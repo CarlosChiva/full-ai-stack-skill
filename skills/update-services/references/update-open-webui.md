@@ -2,7 +2,6 @@
 
 Follow these steps to update the Open-WebUI service manually without using an automated script.
 
----
 
 ## Step 1: Pull the Latest Image
 
@@ -12,7 +11,6 @@ Download the latest version of the Open-WebUI image:
 docker pull ghcr.io/open-webui/open-webui:main
 ```
 
----
 
 ## Step 2: Ask User About Configuration
 
@@ -20,7 +18,6 @@ Before recreating the container, ask the user:
 
 > "Would you like to customize the default container configuration (port, data persistence, network mode)?"
 
----
 
 ## Step 3: Stop and Remove the Old Container
 
@@ -31,7 +28,6 @@ docker stop open-webui
 docker rm open-webui
 ```
 
----
 
 ## Step 4: Choose a Startup Configuration
 
@@ -83,7 +79,6 @@ docker run -d -p 8080:8080 --name open-webui --restart always \
 - **WEBUI_SECRET_KEY** — Secret key for session authentication
 - **ENABLE_OLLAMA_SERVER** — Set to `true` to run a built-in Ollama server (default: `false`)
 
----
 
 ## Step 5: Verify the Update
 
@@ -99,7 +94,6 @@ View the container logs:
 docker logs open-webui
 ```
 
----
 
 ## Complete Example Flow
 
@@ -121,7 +115,6 @@ docker ps --filter name=open-webui
 docker logs open-webui
 ```
  
----
 
 ## Best Practices
 
