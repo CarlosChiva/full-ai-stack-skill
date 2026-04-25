@@ -16,9 +16,7 @@
       "files": [
         "SKILL.md",
         "references/update-ollama.md",
-        "references/update-open-webui.md",
-        "scripts/install_ollama.sh",
-        "scripts/update_opencode.sh"
+        "references/update-open-webui.md"
       ]
     }
   ]
