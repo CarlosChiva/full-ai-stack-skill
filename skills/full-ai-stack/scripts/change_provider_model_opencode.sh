@@ -1,6 +1,16 @@
 #!/bin/bash
 
-SEARCH_DIR="${SEARCH_DIR:-$HOME/.config/opencode/agents}"
+# ─────────────────────────────────────────────
+#  agents-model-manager.sh
+#  Gestiona el campo 'model' de agentes de
+#  opencode (~/.config/opencode/agents/) y
+#  Claude Code (~/.claude/agents/)
+# ─────────────────────────────────────────────
+
+OPENCODE_DIR="${OPENCODE_DIR:-$HOME/.config/opencode/agents}"
+CLAUDECODE_DIR="${CLAUDECODE_DIR:-$HOME/.claude/agents}"
+SEARCH_DIR=""
+TOOL=""
 MODEL_VALUE=""
 FILES_PROCESSED=0
 FILES_UPDATED=0
@@ -12,309 +22,213 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Función para listar modelos disponibles (no incrementa contadores)
-list_without_stats() {
-    local directory="${1:-$SEARCH_DIR}"
-    [ ! -d "$directory" ] && return 1
-    echo "📋 Modelos disponibles en $directory:"
+# ── Ayuda ────────────────────────────────────
+usage() {
     echo ""
-    while IFS= read -r -d '' file; do
-        agent=$(basename "$file" .md)
-        model=$(grep -m 1 "^[[:space:]]*model:" "$file" 2>/dev/null | sed 's/^[[:space:]]*model:[[:space:]]*//' | cut -d' ' -f1)
-        [ -n "$agent" ] && echo "  ✅ $(basename "$agent") → ${model:-}"
-    done < <(find "$directory" -name "*.md" -type f -print0)
+    echo "  Uso:"
+    echo "    $0 --tool <opencode|claudecode> --list"
+    echo "    $0 --tool <opencode|claudecode> --edit <modelo> [--agents <ag1 ag2 ...>]"
+    echo ""
+    echo "  Opciones:"
+    echo "    --tool opencode      Apunta a ~/.config/opencode/agents/"
+    echo "    --tool claudecode    Apunta a ~/.claude/agents/"
+    echo ""
+    echo "  Formato del modelo:"
+    echo "    opencode   →  proveedor/nombre   (ej: anthropic/claude-sonnet-4-5)"
+    echo "    claudecode →  alias corto        (ej: sonnet | opus | haiku)"
+    echo "                  o model string     (ej: claude-sonnet-4-5-20251001)"
+    echo ""
+    echo "  Ejemplos:"
+    echo "    $0 --tool opencode    --list"
+    echo "    $0 --tool claudecode  --list"
+    echo "    $0 --tool opencode    --edit anthropic/claude-opus-4-6"
+    echo "    $0 --tool claudecode  --edit sonnet --agents reviewer.md debugger.md"
+    echo ""
+    exit 1
 }
 
-# Función para listar modelos (con resultados finales)
-list_models() {
-    local directory="${1:-$SEARCH_DIR}"
-    [ ! -d "$directory" ] && return 1
-    list_without_stats "$directory"
-    # No mostrar resultados finales en listar
-    [ $FILES_PROCESSED -gt 0 ] || [ $FILES_UPDATED -gt 0 ] || return 0
-    echo ""
-    echo "════════════════════════════════════════════════════════════════════════════════════════"
-    echo "║  📊 Resultados Finales"
-    echo "║"
-    echo "╚══════════════════════════════════════════════════════════════════════════════════════"
-    echo ""
-    echo "  Agentes procesados: $FILES_PROCESSED"
-    echo "  Actualizados: $FILES_UPDATED"
-    echo "  Sin cambios/error: $FILES_SKIPPED"
-    [ $FILES_UPDATED -gt 0 ] && echo "  ✅ Configuración completada" || echo "  ⚠️  No se realizaron cambios"
+# ── Selección de directorio según herramienta ─
+resolve_tool() {
+    case "$TOOL" in
+        opencode)
+            SEARCH_DIR="$OPENCODE_DIR"
+            ;;
+        claudecode)
+            SEARCH_DIR="$CLAUDECODE_DIR"
+            ;;
+        *)
+            echo "❌ Herramienta desconocida: '$TOOL'. Usa 'opencode' o 'claudecode'."
+            usage
+            ;;
+    esac
+
+    if [ ! -d "$SEARCH_DIR" ]; then
+        echo "❌ Directorio no encontrado: $SEARCH_DIR"
+        exit 1
+    fi
 }
 
-# Función para editar agentes específicos con provider/model
-edit_agents() {
-    local provider_model="$1"
-    shift
-    local agents=()
-    
-    # Re-colectar los agentes ignorando flags
-    for arg in "$@"; do
-        [ "$arg" = "--agents" ] && continue
-        [ ! -n "$arg" ] && continue
-        agents+=("$arg")
-    done
-    
-    [ ${#agents[@]} -eq 0 ] && return 0
-    
-    echo "🔧 Editando agentes con modelo: $provider_model"
-    echo ""
-    
-    for agent in "${agents[@]}"; do
-        # Si no termina en .md, añade el sufijo
-        if [[ ! "$agent" == *.md ]]; then
-            agent="${agent}.md"
+# ── Validación de formato de modelo ───────────
+validate_model() {
+    local model="$1"
+    if [ "$TOOL" = "opencode" ]; then
+        if [[ ! "$model" =~ ^[^/]+/[^/]+$ ]]; then
+            echo "❌ Formato inválido para opencode. Debe ser 'proveedor/nombre' (ej: anthropic/claude-sonnet-4-5)"
+            exit 1
         fi
-        [ ! -f "$SEARCH_DIR/$agent" ] && { echo "❌ $agent → No encontrado"; FILES_SKIPPED=$((FILES_SKIPPED + 1)); continue; }
-        
-        # Verificar si ya tiene el modelo
-        if grep -qE "^[[:space:]]*model:[[:space:]]*$provider_model" "$SEARCH_DIR/$agent"; then
-            echo "⏭️  $agent → Ya tiene asignado"
+    fi
+    # Para claudecode se acepta cualquier string (sonnet, opus, haiku, model-string completo)
+}
+
+# ── Listar agentes ────────────────────────────
+list_models() {
+    echo ""
+    echo "  🔧 Herramienta : $TOOL"
+    echo "  📁 Directorio  : $SEARCH_DIR"
+    echo ""
+    echo "  📋 Agentes configurados:"
+    echo ""
+
+    local found=0
+    while IFS= read -r -d '' file; do
+        found=1
+        agent=$(basename "$file" .md)
+        model=$(grep -m 1 "^[[:space:]]*model:" "$file" 2>/dev/null \
+                | sed 's/^[[:space:]]*model:[[:space:]]*//' \
+                | cut -d' ' -f1)
+        printf "    ✅ %-25s → %s\n" "$agent" "${model:-(sin modelo)}"
+    done < <(find "$SEARCH_DIR" -name "*.md" -type f -print0)
+
+    [ $found -eq 0 ] && echo "    ⚠️  No se encontraron agentes en $SEARCH_DIR"
+    echo ""
+}
+
+# ── Editar agentes ────────────────────────────
+edit_agents() {
+    local agents=("$@")
+
+    echo ""
+    echo "  🔧 Herramienta : $TOOL"
+    echo "  📁 Directorio  : $SEARCH_DIR"
+    echo "  🎯 Modelo      : $MODEL_VALUE"
+    echo ""
+    echo "  ✏️  Editando agentes:"
+    echo ""
+
+    for agent in "${agents[@]}"; do
+        # Normalizar: añadir .md si falta
+        [[ "$agent" != *.md ]] && agent="${agent}.md"
+
+        # Resolver ruta: si el usuario pasó ruta absoluta o relativa, usarla tal cual;
+        # si es solo nombre de archivo, buscarlo en SEARCH_DIR (recursivo)
+        local agent_file=""
+        if [ -f "$agent" ]; then
+            agent_file="$agent"
+        else
+            # Búsqueda recursiva dentro de SEARCH_DIR
+            agent_file=$(find "$SEARCH_DIR" -name "$(basename "$agent")" -type f 2>/dev/null | head -1)
+        fi
+
+        local label
+        label=$(basename "${agent_file:-$agent}" .md)
+
+        if [ -z "$agent_file" ]; then
+            printf "    ❌ %-25s → No encontrado\n" "$label"
+            FILES_SKIPPED=$((FILES_SKIPPED + 1))
+            continue
+        fi
+
+        # ¿Ya tiene el modelo?
+        if grep -qE "^[[:space:]]*model:[[:space:]]*${MODEL_VALUE}[[:space:]]*$" "$agent_file"; then
+            printf "    ⏭️  %-25s → Ya tiene ese modelo\n" "$label"
             FILES_SKIPPED=$((FILES_SKIPPED + 1))
             FILES_PROCESSED=$((FILES_PROCESSED + 1))
             continue
         fi
-        
-        # Actualizar el archivo
-        sed -i "0,/^[[:space:]]*model:/s|\([[:space:]]*model:[[:space:]]*\).*|\1${provider_model}|" "$SEARCH_DIR/$agent"
-        
-        # Verificar si se actualizó correctamente
-        if grep -qE "^[[:space:]]*model:[[:space:]]*$provider_model" "$SEARCH_DIR/$agent"; then
-            updated_model=$(grep -m 1 "^[[:space:]]*model:" "$SEARCH_DIR/$agent" | sed 's/^[[:space:]]*model:[[:space:]]*//' | cut -d' ' -f1)
-            echo "✅ $agent → Modelo actualizado a: $updated_model"
-            FILES_UPDATED=$((FILES_UPDATED + 1))
-        else
-            echo "❌ $agent → Error al actualizar"
-            FILES_SKIPPED=$((FILES_SKIPPED + 1))
-        fi
-        
-        FILES_PROCESSED=$((FILES_PROCESSED + 1))
-    done
-}
 
-# Funciones mantenidas para compatibilidad
-show_agent_menu() {
-    AGENTS=()
-    agent_files=()
-    
-    # Recopilar todos los archivos .md
-    while IFS= read -r -d '' file; do
-        AGENTS+=("$(basename "$file" .md)")
-        agent_files+=("$file")
-    done < <(find "$SEARCH_DIR" -name "*.md" -type f -print0)
-
-    if [ ${#AGENTS[@]} -eq 0 ]; then
-        echo "❌ No se encontraron agentes en $SEARCH_DIR"
-        exit 1
-    fi
-
-    # Crear selección numérica
-    echo "🎯 Agentes disponibles:"
-    echo ""
-    for ((i = 0; i < ${#AGENTS[@]}; i++)); do
-        printf "%2d. %-20s " $((i + 1)) "${AGENTS[$i]}"
-        if [ -f "$SEARCH_DIR/${AGENTS[$i]}.md" ] && grep -qE "^[[:space:]]*model:" "$SEARCH_DIR/${AGENTS[$i]}.md"; then
-            current_model=$(grep -m 1 "^[[:space:]]*model:" "$SEARCH_DIR/${AGENTS[$i]}.md" | sed 's/^[[:space:]]*model:[[:space:]]*//')
-            echo "(Actual: $current_model)"
-        else
-            echo "(Sin model configurado)"
-        fi
-    done
-    echo ""
-    echo "Selecciona los agentes (escribe "all" para seleccionarlos todos):"
-}
-
-select_agents() {
-    show_agent_menu
-    read -r selection
-    
-    # Manejar selección múltiple
-    if [[ "$selection" =~ ^[[:space:]]*$ ]]; then
-        return
-    fi
-
-    # Verificar si seleccionó "todos"
-    if [[ "$selection" =~ "all" ]] || [[ "$selection" =~ "ALL" ]]; then
-        ALL_AGENTS=()
-        while IFS= read -r -d '' file; do
-            ALL_AGENTS+=("$(basename "$file" .md)")
-        done < <(find "$SEARCH_DIR" -name "*.md" -type f -print0)
-        SELECTED_AGENTS=("${ALL_AGENTS[@]}")
-    else
-        IFS=' ' read -ra selected <<< "$selection"
-        for idx in "${selected[@]}"; do
-            if [ "$idx" -ge 1 ] && [ "$idx" -le ${#AGENTS[@]} ]; then
-                SELECTED_AGENTS+=("${AGENTS[$((idx - 1))]}")
-            fi
-        done
-    fi
-
-    # Verificar que haya al menos uno
-    if [ ${#SELECTED_AGENTS[@]} -eq 0 ]; then
-        return
-    fi
-
-    # Mostrar resumen
-    echo ""
-    echo "✅ Agentes seleccionados: ${#SELECTED_AGENTS[@]}"
-    for agent in "${SELECTED_AGENTS[@]}"; do
-        echo "      - $agent"
-    done
-    echo ""
-}
-
-confirm_changes() {
-    echo "¿Deseas aplicar los mismos cambios a TODOS los agentes seleccionados?"
-    read -p "> [1] Aplicar a todos / [2] Cambiar cada uno individualmente: " choice
-    
-    case $choice in
-        1|"")
-            apply_same_to_all
-            ;;
-        2)
-            change_individual
-            ;;
-        *)
-            echo "❌ Opción inválida"
-            confirm_changes
-            ;;
-    esac
-}
-
-apply_same_to_all() {
-    echo ""
-    echo "📝 Actualizando todos los agentes seleccionados:"
-    echo 
-
-    for agent in "${SELECTED_AGENTS[@]}"; do
-        agent_file="$SEARCH_DIR/${agent}.md"
-        
-        if [ ! -f "$agent_file" ]; then
-            echo "❌ $agent → No se encontraron"
-            FILES_SKIPPED=$((FILES_SKIPPED + 1))
-            continue
-        fi
-
-        # Verificar si el agente ya tiene el modelo actual
-        if grep -qE "^[[:space:]]*model:[[:space:]]*$MODEL_VALUE" "$agent_file"; then
-            echo "⏭️  $agent → Ya tiene el modelo asignado"
-            FILES_SKIPPED=$((FILES_SKIPPED + 1))
-            continue
-        fi
-
-        # Actualizar el archivo
+        # Actualizar
         sed -i "0,/^[[:space:]]*model:/s|\([[:space:]]*model:[[:space:]]*\).*|\1${MODEL_VALUE}|" "$agent_file"
-        
-        # Verificar si se actualizó correctamente
-        if grep -qE "^[[:space:]]*model:[[:space:]]*$MODEL_VALUE" "$agent_file"; then
-            echo "✅ $agent → Modelo actualizado a: $MODEL_VALUE"
+
+        if grep -qE "^[[:space:]]*model:[[:space:]]*${MODEL_VALUE}[[:space:]]*$" "$agent_file"; then
+            printf "    ✅ %-25s → Actualizado a: %s\n" "$label" "$MODEL_VALUE"
             FILES_UPDATED=$((FILES_UPDATED + 1))
         else
-            echo "❌ $agent → Error al actualizar"
+            printf "    ❌ %-25s → Error al actualizar\n" "$label"
             FILES_SKIPPED=$((FILES_SKIPPED + 1))
         fi
-        
+
         FILES_PROCESSED=$((FILES_PROCESSED + 1))
     done
 }
 
-change_individual() {
+# ── Resultados finales ────────────────────────
+show_results() {
     echo ""
-    echo "🔧 Modificación individual:"
+    echo "  ════════════════════════════════════════════"
+    echo "    📊 Resultados"
+    echo "  ════════════════════════════════════════════"
+    echo "    Procesados  : $FILES_PROCESSED"
+    echo "    Actualizados: $FILES_UPDATED"
+    echo "    Sin cambios : $FILES_SKIPPED"
+    if [ $FILES_UPDATED -gt 0 ]; then
+        echo "    ✅ Configuración completada"
+    else
+        echo "    ⚠️  No se realizaron cambios"
+    fi
     echo ""
-    
-    for agent in "${SELECTED_AGENTS[@]}"; do
-        agent_file="$SEARCH_DIR/${agent}.md"
-        current_model=$(grep -m 1 "^[[:space:]]*model:" "$agent_file" 2>/dev/null | sed 's/^[[:space:]]*model:[[:space:]]*//' | cut -d' ' -f1)
-        
-        echo "📝 Agente: $agent"
-        echo "   Modelo actual: ${current_model:-No configurado}"
-        echo ""
-        
-        read -p "   Nuevo modelo (proveedor/nombre, o enter para mantener): " new_model
-        
-        # Si el usuario no ingresa nada, mantener el modelo actual o dejarlo vacío
-        if [[ -z "$new_model" ]]; then
-            echo "⏭️  $agent → Se mantiene el modelo actual"
-            FILES_SKIPPED=$((FILES_SKIPPED + 1))
-            continue
-        fi
-
-        # Verificar formato
-        if [[ ! "$new_model" =~ ^[^/]+/[^/]+$ ]]; then
-            echo "❌ Format invalido. Debe ser 'proveedor/nombre'"
-        else
-            # Actualizar el archivo
-            sed -i "0,/^[[:space:]]*model:/s|\([[:space:]]*model:[[:space:]]*\).*|\1${new_model}|" "$agent_file"
-            
-            # Verificar si se actualizó
-            # Extraer nuevo valor
-            updated_model=$(grep -m 1 "^[[:space:]]*model:" "$agent_file" | sed 's/^[[:space:]]*model:[[:space:]]*//' | cut -d' ' -f1)
-            echo "✅ $agent → Modelo actualizado a: $updated_model"
-            FILES_UPDATED=$((FILES_UPDATED + 1))
-        fi
-        FILES_PROCESSED=$((FILES_PROCESSED + 1))
-        echo ""
-    done
 }
 
-# Flujo principal
-if [ $# -eq 0 ]; then
-    echo "Uso: $0 --list [DIRECTORIO]"
-    echo "     $0 --edit <provider/model> --agents <archivo1.md archivo2.md ...>"
-    exit 1
-fi
+# ── Parser de argumentos ──────────────────────
+[ $# -eq 0 ] && usage
 
-case "$1" in
-    --list|-l)
-        # Usa directorio por defecto si no se pasa nada
-        [ -n "$2" ] && [ ! -d "$2" ] && SEARCH_DIR="$2"
-        list_models "$SEARCH_DIR"
-        exit 0
+AGENTS_LIST=()
+PARSE_AGENTS=false
+ACTION=""
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --tool|-t)
+            TOOL="$2"; shift 2 ;;
+        --list|-l)
+            ACTION="list"; shift ;;
+        --edit|-e)
+            ACTION="edit"; MODEL_VALUE="$2"; shift 2 ;;
+        --agents|-a)
+            PARSE_AGENTS=true; shift ;;
+        *)
+            if $PARSE_AGENTS; then
+                AGENTS_LIST+=("$1")
+            else
+                echo "❌ Argumento desconocido: $1"
+                usage
+            fi
+            shift ;;
+    esac
+done
+
+# ── Validaciones básicas ──────────────────────
+[ -z "$TOOL" ]   && { echo "❌ Falta --tool <opencode|claudecode>"; usage; }
+[ -z "$ACTION" ] && { echo "❌ Falta --list o --edit <modelo>"; usage; }
+
+resolve_tool
+
+# ── Ejecutar acción ───────────────────────────
+case "$ACTION" in
+    list)
+        list_models
         ;;
-    --edit|-e)
-        # Reiniciar contadores para edición
-        FILES_PROCESSED=0
-        FILES_UPDATED=0
-        FILES_SKIPPED=0
-        [ -n "$2" ] && MODEL_VALUE="$2"
-        case "$3" in
-            --agents|-a)
-                shift 2
-                edit_agents "$MODEL_VALUE" "$@"
-                # Mostrar resultados siempre después de edición
-                echo ""
-                echo "════════════════════════════════════════════════════════════════════════════════════════════"
-                echo "║  📊 Resultados Finales"
-                echo "║"
-                echo "╚═════════════════════════════════════════════════════════════════════════════════════════════"
-                echo ""
-                echo "  Agentes procesados: $FILES_PROCESSED"
-                echo "  Actualizados: $FILES_UPDATED"
-                echo "  Sin cambios/error: $FILES_SKIPPED"
-                [ $FILES_UPDATED -gt 0 ] && echo "  ✅ Configuración completada" || echo "  ⚠️  No se realizaron cambios"
-                ;;
-            *)
-                # Usa SEARCH_DIR/*.md por defecto si no especifican --agents
-                edit_agents "$MODEL_VALUE" "$SEARCH_DIR"/*.md
-                echo ""
-                echo "════════════════════════════════════════════════════════════════════════════════════════════"
-                echo "║  📊 Resultados Finales"
-                echo "║"
-                echo "╚═════════════════════════════════════════════════════════════════════════════════════════════"
-                echo ""
-                echo "  Agentes procesados: $FILES_PROCESSED"
-                echo "  Actualizados: $FILES_UPDATED"
-                echo "  Sin cambios/error: $FILES_SKIPPED"
-                [ $FILES_UPDATED -gt 0 ] && echo "  ✅ Configuración completada" || echo "  ⚠️  No se realizaron cambios"
-                ;;
-        esac
-        ;;
-    *)
-        echo "Uso: $0 --list [DIRECTORIO]"
-        echo "     $0 --edit <provider/model> --agents <archivo1.md archivo2.md ...>"
-        exit 1
+    edit)
+        [ -z "$MODEL_VALUE" ] && { echo "❌ Falta el valor del modelo tras --edit"; usage; }
+        validate_model "$MODEL_VALUE"
+
+        if [ ${#AGENTS_LIST[@]} -eq 0 ]; then
+            # Sin --agents: afectar todos los .md del directorio (recursivo)
+            while IFS= read -r -d '' file; do
+                AGENTS_LIST+=("$file")
+            done < <(find "$SEARCH_DIR" -name "*.md" -type f -print0)
+        fi
+
+        edit_agents "${AGENTS_LIST[@]}"
+        show_results
         ;;
 esac
